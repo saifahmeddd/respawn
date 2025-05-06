@@ -65,33 +65,52 @@ const Explore = () => {
   useEffect(() => {
     const fetchGames = async () => {
       try {
-        const gamesCol = collection(db, "games");
-        const snapshot = await getDocs(gamesCol);
-        const gameList = snapshot.docs.map((doc) => ({
+        const gamesRef = collection(db, 'games');
+        const gamesSnapshot = await getDocs(gamesRef);
+        const gamesData = gamesSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
+          ...doc.data()
         }));
-        setGames(gameList);
-        setLoading(false);
-      } catch (e) {
-        console.error("Error fetching games:", e);
-        setError("Failed to load games.");
+        setGames(gamesData);
+      } catch (err) {
+        console.error('Error fetching games:', err);
+        setError('Failed to load games. Please try again.');
+      } finally {
         setLoading(false);
       }
     };
+
     fetchGames();
   }, []);
 
   const goToCart = () => {
-    navigate("/cart");
+    navigate('/cart');
   };
 
   if (loading) {
-    return <div style={styles.loading}>Loading games...</div>;
+    return (
+      <div style={styles.container}>
+        <div style={styles.loadingContainer}>
+          <h2 style={styles.loadingTitle}>Loading games...</h2>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div style={styles.error}>{error}</div>;
+    return (
+      <div style={styles.container}>
+        <div style={styles.errorContainer}>
+          <h2 style={styles.errorTitle}>{error}</h2>
+          <button
+            onClick={() => window.location.reload()}
+            style={styles.retryButton}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -104,7 +123,12 @@ const Explore = () => {
       </div>
       <div style={styles.cardGrid}>
         {games.map((game) => (
-          <div key={game.id} className="game-card" style={styles.card}>
+          <div 
+            key={game.id} 
+            className="game-card" 
+            style={styles.card}
+            onClick={() => navigate(`/product/${game.id}`)}
+          >
             <img
               src={imageMap[game.image] || imageMap.default}
               alt={game.title}
@@ -116,9 +140,14 @@ const Explore = () => {
             <div style={styles.cardContent}>
               <h2 style={styles.cardTitle}>{game.title}</h2>
               <p style={styles.cardDescription}>{game.description}</p>
-              <p style={styles.cardGenre}>Genre: {game.genre}</p>
+              <p style={styles.cardGenre}>{game.genre}</p>
+              <p style={styles.cardPrice}>${game.price}</p>
               <button
-                onClick={() => addToCart(game)}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent card click when clicking the button
+                  console.log('Adding to cart:', game); // Debug log
+                  addToCart(game);
+                }}
                 style={styles.addToCartButton}
               >
                 Add to Cart
@@ -166,109 +195,137 @@ const Explore = () => {
 
 const styles = {
   container: {
-    backgroundColor: "#1a1a1a",
-    color: "#fff",
-    minHeight: "100vh",
-    padding: "20px",
+    backgroundColor: '#1a1a1a',
+    color: '#fff',
+    minHeight: '100vh',
+    padding: '20px',
     fontFamily: "'Impact2', sans-serif",
   },
   header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "0 20px",
-    marginBottom: "40px",
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '30px',
   },
   title: {
-    fontSize: "2.8rem",
-    fontWeight: "bold",
-    color: "#ffffff",
-    textTransform: "uppercase",
-    letterSpacing: "3px",
-    textShadow: "0 0 10px rgba(255, 255, 255, 0.3)",
+    fontSize: '2.8rem',
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textTransform: 'uppercase',
+    letterSpacing: '3px',
+    textShadow: '0 0 10px rgba(255, 255, 255, 0.3)',
+    fontFamily: "'Impact2', sans-serif",
+  },
+  cartButton: {
+    backgroundColor: 'transparent',
+    color: '#ffffff',
+    border: '2px solid #ffffff',
+    padding: '12px 25px',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
     fontFamily: "'Impact2', sans-serif",
   },
   cardGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: "30px",
-    padding: "20px",
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: '30px',
+    padding: '20px 0',
   },
   card: {
-    position: "relative",
-    borderRadius: "15px",
-    transition: "all 0.3s ease",
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    maxWidth: '100%',
   },
   cardImage: {
-    width: "100%",
-    height: "250px",
-    objectFit: "cover",
-    transition: "transform 0.3s ease",
+    width: '100%',
+    height: '300px',
+    objectFit: 'contain',
+    objectPosition: 'center',
+    transition: 'transform 0.3s ease',
+    borderTopLeftRadius: '15px',
+    borderTopRightRadius: '15px',
+    backgroundColor: '#000',
+    padding: '10px',
   },
   cardContent: {
-    padding: "20px",
-    background:
-      "linear-gradient(to bottom, rgba(26, 26, 26, 0.8), rgba(26, 26, 26, 0.95))",
-    backdropFilter: "blur(10px)",
+    padding: '20px',
   },
   cardTitle: {
-    fontSize: "1.4rem",
-    fontWeight: "bold",
-    marginBottom: "15px",
-    color: "#ffffff",
-    textTransform: "uppercase",
+    fontSize: '1.4rem',
+    marginBottom: '10px',
+    color: '#ffffff',
+    textTransform: 'uppercase',
     fontFamily: "'Impact2', sans-serif",
   },
   cardDescription: {
-    fontSize: "0.9rem",
-    marginBottom: "15px",
-    color: "#ddd",
-    lineHeight: "1.6",
+    fontSize: '0.9rem',
+    color: '#cccccc',
+    marginBottom: '15px',
+    lineHeight: '1.4',
   },
   cardGenre: {
-    fontSize: "0.8rem",
-    color: "#aaa",
-    marginBottom: "20px",
-    fontStyle: "italic",
+    fontSize: '0.8rem',
+    color: '#888888',
+    marginBottom: '10px',
+  },
+  cardPrice: {
+    fontSize: '1.2rem',
+    color: '#4CAF50',
+    marginBottom: '15px',
+    fontWeight: 'bold',
   },
   addToCartButton: {
-    backgroundColor: "transparent",
-    color: "#ffffff",
-    border: "2px solid #ffffff",
-    padding: "10px 20px",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontSize: "0.9rem",
-    fontWeight: "bold",
-    width: "100%",
-    transition: "all 0.3s ease",
-    textTransform: "uppercase",
-    letterSpacing: "1px",
+    backgroundColor: 'transparent',
+    color: '#ffffff',
+    border: '2px solid #ffffff',
+    padding: '10px 20px',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    fontFamily: "'Impact2', sans-serif",
+    width: '100%',
   },
-  cartButton: {
-    backgroundColor: "transparent",
-    color: "#ffffff",
-    border: "2px solid #ffffff",
-    padding: "12px 25px",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontSize: "1rem",
-    fontWeight: "bold",
-    transition: "all 0.3s ease",
-    textTransform: "uppercase",
-    letterSpacing: "1px",
+  loadingContainer: {
+    textAlign: 'center',
+    padding: '50px',
   },
-  loading: {
-    textAlign: "center",
-    fontSize: "1.2rem",
-    marginTop: "50px",
-    color: "#ffffff",
+  loadingTitle: {
+    fontSize: '1.5rem',
+    color: '#ffffff',
   },
-  error: {
-    textAlign: "center",
-    fontSize: "1.2rem",
-    color: "#ff4444",
-    marginTop: "50px",
+  errorContainer: {
+    textAlign: 'center',
+    padding: '50px',
+  },
+  errorTitle: {
+    fontSize: '1.5rem',
+    color: '#ff4444',
+    marginBottom: '20px',
+  },
+  retryButton: {
+    backgroundColor: 'transparent',
+    color: '#ffffff',
+    border: '2px solid #ffffff',
+    padding: '12px 25px',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    fontFamily: "'Impact2', sans-serif",
   },
 };
 

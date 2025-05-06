@@ -1,7 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import Explore from "./pages/Explore"; // Import Explore page
 import Cart from "./pages/Cart";
+import ProductDetails from "./pages/ProductDetails";
+import OrderSummary from "./pages/OrderSummary"; // Add OrderSummary import
 import { CartProvider } from "./context/CartContext";
 import React from "react";
 
@@ -14,17 +16,17 @@ function App() {
           <div style={styles.navbarLeft}>
             <div style={styles.navLogo}>respawn</div>
             <div style={styles.navLinks}>
-              <a href="/" style={styles.navLink}>Home</a>
-              <a href="/explore" style={styles.navLink}>Explore</a>
-              <a href="/about" style={styles.navLink}>About</a>
-              <a href="/contact" style={styles.navLink}>Contact</a>
+              <Link to="/" style={styles.navLink}>Home</Link>
+              <Link to="/explore" style={styles.navLink}>Explore</Link>
+              <Link to="/about" style={styles.navLink}>About</Link>
+              <Link to="/contact" style={styles.navLink}>Contact</Link>
             </div>
           </div>
           <div style={styles.navbarRight}>
             <div style={styles.navIcon}>
-              <a href="/cart" style={styles.navLink}>
+              <Link to="/cart" style={styles.navLink}>
                 <i className="fas fa-shopping-cart" style={styles.icon}></i>
-              </a>
+              </Link>
             </div>
             <div style={styles.navIcon}>
               <i className="fas fa-user" style={styles.icon}></i>
@@ -38,6 +40,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/explore" element={<Explore />} /> {/* Add Explore route */}
             <Route path="/cart" element={<Cart />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
+            <Route path="/order-summary" element={<OrderSummary />} /> {/* Add OrderSummary route */}
             {/* Add other routes here as you build more pages */}
           </Routes>
         </main>
