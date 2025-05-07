@@ -3,7 +3,6 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-
 const firebaseConfig = {
   apiKey: "AIzaSyB5U32czF6uoK3KI3a7jh7TDH1984nPP98",
   authDomain: "respawn-v5.firebaseapp.com",
@@ -17,6 +16,23 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Initialize Auth and Firestore
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Log initialization status
+console.log('Firebase app initialized:', !!app);
+console.log('Firebase auth initialized:', !!auth);
+console.log('Firebase firestore initialized:', !!db);
+
+// Enable persistence for Firestore
+// enableIndexedDbPersistence(db).catch((err) => {
+//   if (err.code === 'failed-precondition') {
+//     console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+//   } else if (err.code === 'unimplemented') {
+//     console.log('The current browser does not support persistence.');
+//   }
+// });
+
 // Export services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+export { auth, db };

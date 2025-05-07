@@ -3,11 +3,62 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { getImage } from '../utils/imageMapping';
+
+// Import all game images
+import eldenringImg from "../assets/images/eldenring.jpeg";
+import godofwarImg from "../assets/images/godofwar.jpg";
+import gta5Img from "../assets/images/gta5.jpeg";
+import rdr2Img from "../assets/images/rdr2.jpeg";
+import lolImg from "../assets/images/lol.jpeg";
+import tekken8Img from "../assets/images/tekken8.jpeg";
+import overwatchImg from "../assets/images/overwatch.jpeg";
+import codb06Img from "../assets/images/codb06.jpeg";
+import minecraftImg from "../assets/images/minecraft.png";
+import lou1Img from "../assets/images/lou1.jpeg";
+import lou2Img from "../assets/images/lou2.jpg";
+import legoRobloxImg from "../assets/images/lego-roblox-video-game-3840x2160-14270.jpg";
+import venomImg from "../assets/images/venom-spider-man-5120x2880-13179.jpg";
+import fortniteImg from "../assets/images/fortnite-street-striker-outfit-skin-3840x2160-488.jpg";
+import yasukeImg from "../assets/images/yasuke-naoe-3840x2160-21870.jpg";
+import racingImg from "../assets/images/racing.jpg";
+import racing2Img from "../assets/images/racing2.jpg";
+import racing5Img from "../assets/images/racing5.jpg";
+import racing6Img from "../assets/images/racing6.jpg";
+import racingBlurImg from "../assets/images/racing-blur.jpg";
+import defaultImg from "../assets/images/images.jpeg";
+
+// Create an image mapping object
+const imageMap = {
+  "eldenring.jpeg": eldenringImg,
+  "godofwar.jpg": godofwarImg,
+  "gta5.jpeg": gta5Img,
+  "rdr2.jpeg": rdr2Img,
+  "lol.jpeg": lolImg,
+  "tekken8.jpeg": tekken8Img,
+  "overwatch.jpeg": overwatchImg,
+  "codb06.jpeg": codb06Img,
+  "minecraft.png": minecraftImg,
+  "lou1.jpeg": lou1Img,
+  "lou2.jpg": lou2Img,
+  "lego-roblox-video-game-3840x2160-14270.jpg": legoRobloxImg,
+  "venom-spider-man-5120x2880-13179.jpg": venomImg,
+  "fortnite-street-striker-outfit-skin-3840x2160-488.jpg": fortniteImg,
+  "yasuke-naoe-3840x2160-21870.jpg": yasukeImg,
+  "racing.jpg": racingImg,
+  "racing2.jpg": racing2Img,
+  "racing5.jpg": racing5Img,
+  "racing6.jpg": racing6Img,
+  "racing-blur.jpg": racingBlurImg,
+  "default": defaultImg,
+};
 
 const OrderSummary = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { clearCart } = useCart();
+  const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
@@ -77,6 +128,11 @@ const OrderSummary = () => {
       return;
     }
 
+    if (!currentUser) {
+      setError('You must be logged in to place an order');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -90,22 +146,35 @@ const OrderSummary = () => {
         itemCount: orderDetails.itemCount,
         status: 'pending',
         createdAt: serverTimestamp(),
-        userId: 'user123', // Replace with actual user ID when auth is implemented
-        paymentStatus: 'pending'
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        userName: currentUser.displayName || currentUser.email,
+        paymentStatus: 'pending',
+        shippingAddress: currentUser.shippingAddress || null,
+        billingAddress: currentUser.billingAddress || null
       };
 
       console.log('Saving order to Firestore:', orderData);
 
       // Save order to Firestore
       const orderRef = await addDoc(collection(db, 'orders'), orderData);
-      console.log('Order created with ID:', orderRef.id);
+      const orderId = orderRef.id;
+      console.log('Order created with ID:', orderId);
 
       // Clear cart
       clearCart();
       console.log('Cart cleared');
 
-      // Navigate to payment page
-      navigate('/payment', { state: { orderId: orderRef.id, total: orderDetails.total } });
+      // Navigate to payment page with complete order details
+      navigate('/payment', { 
+        state: { 
+          orderDetails: {
+            ...orderData,
+            id: orderId,
+            total: orderDetails.total
+          }
+        } 
+      });
     } catch (err) {
       console.error('Error creating order:', err);
       setError('Failed to create order. Please try again.');
@@ -150,11 +219,11 @@ const OrderSummary = () => {
           {orderDetails.items.map((item) => (
             <div key={item.id} style={styles.orderItem}>
               <img
-                src={item.image}
+                src={imageMap[item.image] || imageMap.default}
                 alt={item.title}
                 style={styles.itemImage}
                 onError={(e) => {
-                  e.target.src = '/default-game.jpg';
+                  e.target.src = imageMap.default;
                 }}
               />
               <div style={styles.itemDetails}>

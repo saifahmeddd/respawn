@@ -1,14 +1,43 @@
-import React from "react";
-import racingBg from "../assets/images/overwatch.jpg";
+import React, { useRef, useEffect } from "react";
+import gta6Video from "../assets/gta6.mp4";
 import customFont from "../assets/fonts/impact2.ttf";
 import { useNavigate } from "react-router-dom";
 
+// Add font-face declaration
+const fontStyle = document.createElement('style');
+fontStyle.textContent = `
+  @font-face {
+    font-family: 'Impact2';
+    src: url(${customFont}) format('truetype');
+    font-display: swap;
+  }
+`;
+document.head.appendChild(fontStyle);
+
 const Home = () => {
   const navigate = useNavigate();
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 2.5;
+    }
+  }, []);
 
   return (
     <div>
       <div style={styles.heroSection}>
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={styles.videoBackground}
+        >
+          <source src={gta6Video} type="video/mp4" />
+        </video>
+        <div style={styles.overlay}></div>
         <div style={styles.overlayContent}>
           <h1 style={styles.onboardingText}>Dive into the ultimate gaming universe.</h1>
           <p style={styles.subText}>Discover, play, and experience the best titles.</p>
@@ -30,8 +59,6 @@ const Home = () => {
           </button>
         </div>
       </div>
-
-      <style>{fontFace}</style>
     </div>
   );
 };
@@ -39,29 +66,46 @@ const Home = () => {
 const styles = {
   heroSection: {
     height: "100vh",
-    backgroundImage: `
-      linear-gradient(rgba(15, 15, 40, 0.7), rgba(15, 15, 40, 0.7)), 
-      url(${racingBg})`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
+    position: "relative",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center",
     padding: "0",
     margin: "0",
+    overflow: "hidden",
     fontFamily: 'Poppins, Roboto, Segoe UI, Arial, sans-serif',
+  },
+  videoBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    zIndex: 0,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(15, 15, 40, 0.7)",
+    zIndex: 1,
   },
   overlayContent: {
     maxWidth: "700px",
     padding: "20px",
     fontFamily: 'Poppins, Roboto, Segoe UI, Arial, sans-serif',
+    position: "relative",
+    zIndex: 2,
   },
   onboardingText: {
     fontSize: "3.2rem",
     fontWeight: "bold",
     marginBottom: "10px",
-    fontFamily: "CustomFont, sans-serif",
+    fontFamily: "Impact2, sans-serif",
     color: "#fff",
     textShadow: "2px 2px 4px rgba(0, 0, 0, 0.5)",
   },
@@ -93,17 +137,5 @@ const styles = {
     fontWeight: "bold",
   }
 };
-
-const fontFace = `
-  @font-face {
-    font-family: 'CustomFont';
-    src: url(${customFont}) format('truetype');
-  }
-`;
-
-const styleSheet = document.createElement("style");
-styleSheet.type = "text/css";
-styleSheet.innerText = fontFace;
-document.head.appendChild(styleSheet);
 
 export default Home;

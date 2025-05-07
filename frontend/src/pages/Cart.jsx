@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { getImage } from '../utils/imageMapping';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Import all game images
 import eldenringImg from "../assets/images/eldenring.jpeg";
@@ -54,50 +57,136 @@ const imageMap = {
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { cart, updateQuantity, removeFromCart, calculateTotal } = useCart();
+  const { cart, updateQuantity, removeFromCart, calculateTotal, initialized, error: cartError, clearCart } = useCart();
+  const { currentUser } = useAuth();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Memoize the total calculation
+  const total = useMemo(() => calculateTotal(), [calculateTotal]);
+
   useEffect(() => {
     const fetchCartItems = async () => {
       try {
-        console.log('Current cart:', cart); // Debug log
+        setLoading(true);
+        setError(null);
 
-        if (cart.length === 0) {
+        console.log('Cart state:', { 
+          cart, 
+          initialized, 
+          currentUser,
+          cartLength: cart?.length,
+          cartItems: cart
+        });
+
+        if (!currentUser) {
+          console.log('No current user, clearing cart items');
           setCartItems([]);
           setLoading(false);
           return;
         }
 
-        // Get games data from Firestore
-        const gamesRef = collection(db, 'games');
-        const gamesSnapshot = await getDocs(gamesRef);
-        const gamesData = gamesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        if (!cart || !Array.isArray(cart) || cart.length === 0) {
+          console.log('Cart is empty or invalid, clearing cart items');
+          setCartItems([]);
+          setLoading(false);
+          return;
+        }
 
-        console.log('Games data from Firestore:', gamesData); // Debug log
+        console.log('Processing cart items:', cart);
 
-        // Combine cart items with game details
-        const combinedItems = cart.map(cartItem => {
-          const gameDetails = gamesData.find(game => game.id === cartItem.id);
-          if (!gameDetails) {
-            console.warn(`Game details not found for ID: ${cartItem.id}`);
+        // Process each cart item individually
+        const processedItems = [];
+        const unavailableItems = [];
+
+        // Process items in parallel for better performance
+        const processPromises = cart.map(async (cartItem) => {
+          try {
+            console.log('Processing cart item:', cartItem);
+            
+            // Validate cart item structure
+            if (!cartItem || typeof cartItem !== 'object' || !cartItem.id) {
+              console.warn('Invalid cart item structure:', cartItem);
+              return null;
+            }
+
+            // If we already have all the necessary data in the cart item, use it
+            if (cartItem.title && typeof cartItem.price === 'number' && cartItem.image) {
+              const processedItem = {
+                ...cartItem,
+                subtotal: cartItem.quantity * cartItem.price
+              };
+              console.log('Using existing cart item data:', processedItem);
+              return processedItem;
+            }
+
+            // Otherwise, fetch the game data from Firestore
+            const gameRef = doc(db, 'games', cartItem.id);
+            const gameDoc = await getDoc(gameRef);
+
+            if (!gameDoc.exists()) {
+              console.log('Game not found in database:', cartItem.id);
+              unavailableItems.push(cartItem.id);
+              return null;
+            }
+
+            const gameData = gameDoc.data();
+            console.log('Fetched game data:', gameData);
+            
+            if (!gameData.available) {
+              console.log('Game is not available:', cartItem.id);
+              unavailableItems.push(cartItem.id);
+              return null;
+            }
+
+            const processedItem = {
+              ...cartItem,
+              ...gameData,
+              subtotal: cartItem.quantity * gameData.price
+            };
+            console.log('Processed item:', processedItem);
+            return processedItem;
+          } catch (error) {
+            console.error(`Error processing game ${cartItem.id}:`, error);
+            console.error('Error details:', {
+              name: error.name,
+              message: error.message,
+              stack: error.stack
+            });
+            unavailableItems.push(cartItem.id);
             return null;
           }
-          return {
-            ...cartItem,
-            ...gameDetails,
-            subtotal: cartItem.quantity * gameDetails.price
-          };
-        }).filter(Boolean);
+        });
 
-        console.log('Combined cart items:', combinedItems); // Debug log
-        setCartItems(combinedItems);
+        // Wait for all items to be processed
+        const results = await Promise.all(processPromises);
+        
+        // Filter out null results and add valid items
+        const validItems = results.filter(item => item !== null);
+        processedItems.push(...validItems);
+
+        // Remove unavailable items from cart
+        if (unavailableItems.length > 0) {
+          console.log('Removing unavailable items:', unavailableItems);
+          unavailableItems.forEach(itemId => removeFromCart(itemId));
+          setError('Some items were removed as they are no longer available.');
+        }
+
+        if (processedItems.length === 0) {
+          console.log('No valid items in cart');
+          setError('No valid items in cart');
+        } else {
+          console.log('Setting cart items:', processedItems);
+          setCartItems(processedItems);
+        }
       } catch (err) {
-        console.error('Error fetching cart items:', err);
+        console.error('Error in fetchCartItems:', err);
+        console.error('Error details:', {
+          name: err.name,
+          message: err.message,
+          stack: err.stack
+        });
         setError('Failed to load cart items. Please try again.');
       } finally {
         setLoading(false);
@@ -105,53 +194,61 @@ const Cart = () => {
     };
 
     fetchCartItems();
-  }, [cart]);
+  }, [cart, currentUser, removeFromCart]);
 
   const handleCheckout = () => {
-    if (cartItems.length === 0) {
-      console.log('Cart is empty, cannot proceed to checkout');
+    if (!currentUser) {
+      navigate('/login', { state: { from: '/cart' } });
       return;
     }
 
-    const total = calculateTotal();
+    if (cartItems.length === 0) return;
+
     const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-    // Format items for order summary
-    const formattedItems = cartItems.map(item => ({
-      id: item.id,
-      title: item.title,
-      image: item.image,
-      price: item.price,
-      quantity: item.quantity,
-      subtotal: item.subtotal,
-      platform: item.platform
-    }));
-
     const checkoutData = {
-      items: formattedItems,
+      items: cartItems.map(item => ({
+        id: item.id,
+        title: item.title,
+        image: item.image,
+        price: item.price,
+        quantity: item.quantity,
+        subtotal: item.subtotal,
+        platform: item.platform
+      })),
       total,
       itemCount
     };
 
-    // Navigate to order summary with cart data
     navigate('/order-summary', { state: checkoutData });
   };
 
   if (loading) {
     return (
-      <div style={styles.container}>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={styles.container}
+      >
         <div style={styles.loadingContainer}>
+          <div style={styles.loadingSpinner} />
           <h2 style={styles.loadingTitle}>Loading cart...</h2>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
-  if (error) {
+  if (error || cartError) {
     return (
-      <div style={styles.container}>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={styles.container}
+      >
         <div style={styles.errorContainer}>
-          <h2 style={styles.errorTitle}>{error}</h2>
+          <h2 style={styles.errorTitle}>{error || cartError}</h2>
           <button
             onClick={() => window.location.reload()}
             style={styles.retryButton}
@@ -159,81 +256,112 @@ const Cart = () => {
             Retry
           </button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
-  if (cartItems.length === 0) {
+  if (!cartItems || cartItems.length === 0) {
     return (
-      <div style={styles.container}>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={styles.container}
+      >
         <h1 style={styles.title}>YOUR CART</h1>
         <div style={styles.emptyCartContainer}>
           <h2 style={styles.emptyCartTitle}>Your cart is empty</h2>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/explore')}
             style={styles.browseButton}
           >
             Browse Games
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
-  const total = calculateTotal();
-
   return (
-    <div style={styles.container}>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={styles.container}
+    >
       <h1 style={styles.title}>YOUR CART</h1>
       
       <div style={styles.cartContainer}>
         {/* Cart Items */}
         <div style={styles.itemsContainer}>
-          {cartItems.map((item) => (
-            <div key={item.id} style={styles.cartItem}>
-              <img
-                src={imageMap[item.image] || imageMap.default}
-                alt={item.title}
-                style={styles.itemImage}
-                onError={(e) => {
-                  e.target.src = imageMap.default;
-                }}
-              />
-              <div style={styles.itemDetails}>
-                <h3 style={styles.itemTitle}>{item.title}</h3>
-                <p style={styles.itemPlatform}>Platform: {item.platform}</p>
-              </div>
-              <div style={styles.quantityContainer}>
-                <button
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                  style={styles.quantityButton}
-                >
-                  -
-                </button>
-                <span style={styles.quantity}>{item.quantity}</span>
-                <button
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  style={styles.quantityButton}
-                >
-                  +
-                </button>
-              </div>
-              <div style={styles.priceContainer}>
-                <p style={styles.subtotal}>${item.subtotal.toFixed(2)}</p>
-                <p style={styles.pricePerItem}>${item.price.toFixed(2)} each</p>
-              </div>
-              <button
-                onClick={() => removeFromCart(item.id)}
-                style={styles.removeButton}
+          <AnimatePresence>
+            {cartItems.map((item) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                style={styles.cartItem}
               >
-                Remove
-              </button>
-            </div>
-          ))}
+                <img
+                  src={getImage(item.image)}
+                  alt={item.title}
+                  style={styles.itemImage}
+                  loading="lazy"
+                  onError={(e) => {
+                    e.target.src = getImage('default');
+                  }}
+                />
+                <div style={styles.itemDetails}>
+                  <h3 style={styles.itemTitle}>{item.title}</h3>
+                  <p style={styles.itemPlatform}>Platform: {item.platform}</p>
+                </div>
+                <div style={styles.quantityContainer}>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    style={styles.quantityButton}
+                    disabled={item.quantity <= 1}
+                  >
+                    -
+                  </motion.button>
+                  <span style={styles.quantity}>{item.quantity}</span>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    style={styles.quantityButton}
+                  >
+                    +
+                  </motion.button>
+                </div>
+                <div style={styles.priceContainer}>
+                  <p style={styles.subtotal}>${item.subtotal.toFixed(2)}</p>
+                  <p style={styles.pricePerItem}>${item.price.toFixed(2)} each</p>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => removeFromCart(item.id)}
+                  style={styles.removeButton}
+                >
+                  Remove
+                </motion.button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
 
         {/* Cart Summary */}
-        <div style={styles.summaryContainer}>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={styles.summaryContainer}
+        >
           <h2 style={styles.summaryTitle}>Cart Summary</h2>
           <div style={styles.summaryRow}>
             <span>Total Items:</span>
@@ -244,16 +372,26 @@ const Cart = () => {
             <span style={styles.totalPrice}>${total.toFixed(2)}</span>
           </div>
 
-          {/* Checkout Button */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={handleCheckout}
             style={styles.checkoutButton}
           >
-            Proceed to Checkout
-          </button>
-        </div>
+            {currentUser ? 'Proceed to Checkout' : 'Login to Checkout'}
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => clearCart()}
+            style={styles.clearCartButton}
+          >
+            Clear Cart
+          </motion.button>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -279,12 +417,14 @@ const styles = {
   cartContainer: {
     maxWidth: '1200px',
     margin: '0 auto',
+    display: 'grid',
+    gridTemplateColumns: '1fr 350px',
+    gap: '30px',
   },
   itemsContainer: {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
-    marginBottom: '30px',
   },
   cartItem: {
     display: 'flex',
@@ -294,12 +434,14 @@ const styles = {
     padding: '20px',
     borderRadius: '10px',
     backdropFilter: 'blur(8px)',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
   },
   itemImage: {
     width: '150px',
     height: '150px',
     objectFit: 'cover',
     borderRadius: '5px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
   },
   itemDetails: {
     flex: 1,
@@ -333,6 +475,11 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    transition: 'all 0.2s ease',
+    '&:disabled': {
+      opacity: 0.5,
+      cursor: 'not-allowed',
+    },
   },
   quantity: {
     fontSize: '1.2rem',
@@ -370,6 +517,10 @@ const styles = {
     padding: '20px',
     borderRadius: '10px',
     backdropFilter: 'blur(8px)',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    height: 'fit-content',
+    position: 'sticky',
+    top: '20px',
   },
   summaryTitle: {
     fontSize: '1.8rem',
@@ -433,6 +584,15 @@ const styles = {
     textAlign: 'center',
     padding: '50px',
   },
+  loadingSpinner: {
+    width: '50px',
+    height: '50px',
+    border: '3px solid #ffffff',
+    borderTop: '3px solid transparent',
+    borderRadius: '50%',
+    margin: '0 auto 20px',
+    animation: 'spin 1s linear infinite',
+  },
   loadingTitle: {
     fontSize: '1.5rem',
     color: '#ffffff',
@@ -455,6 +615,22 @@ const styles = {
     cursor: 'pointer',
     fontSize: '1rem',
     fontWeight: 'bold',
+    transition: 'all 0.3s ease',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    fontFamily: "'Impact2', sans-serif",
+  },
+  clearCartButton: {
+    backgroundColor: 'transparent',
+    color: '#ff4444',
+    border: '2px solid #ff4444',
+    padding: '15px 30px',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '1.2rem',
+    fontWeight: 'bold',
+    width: '100%',
+    marginTop: '10px',
     transition: 'all 0.3s ease',
     textTransform: 'uppercase',
     letterSpacing: '1px',

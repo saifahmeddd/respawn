@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase/config.js';
 import { doc, getDoc } from 'firebase/firestore';
+import { getImage } from '../utils/imageMapping';
 
 // Import all game images
 import eldenringImg from "../assets/images/eldenring.jpeg";
@@ -56,6 +58,7 @@ function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { currentUser } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -84,7 +87,20 @@ function ProductDetails() {
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
-    addToCart(product);
+    if (!currentUser) {
+      navigate('/login', { state: { from: `/product/${id}` } });
+      return;
+    }
+    console.log('Adding product to cart:', product);
+    const gameData = {
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      image: product.image,
+      platform: product.platform,
+      quantity: 1
+    };
+    addToCart(gameData);
   };
 
   if (loading) {
@@ -108,11 +124,11 @@ function ProductDetails() {
       <div style={styles.productContainer}>
         <div style={styles.imageContainer}>
           <img 
-            src={imageMap[product.image] || imageMap.default} 
+            src={getImage(product.image)} 
             alt={product.title} 
             style={styles.image}
             onError={(e) => {
-              e.target.src = imageMap.default;
+              e.target.src = getImage('default');
             }}
           />
         </div>
@@ -141,7 +157,7 @@ function ProductDetails() {
           </div>
           
           <button onClick={handleAddToCart} style={styles.addToCartButton}>
-            Add to Cart
+            {currentUser ? 'Add to Cart' : 'Login to Add to Cart'}
           </button>
         </div>
       </div>

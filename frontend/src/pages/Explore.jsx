@@ -3,63 +3,18 @@ import { db } from "../firebase/config.js";
 import { collection, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-
-// Import all game images
-import eldenringImg from "../assets/images/eldenring.jpeg";
-import godofwarImg from "../assets/images/godofwar.jpg";
-import gta5Img from "../assets/images/gta5.jpeg";
-import rdr2Img from "../assets/images/rdr2.jpeg";
-import lolImg from "../assets/images/lol.jpeg";
-import tekken8Img from "../assets/images/tekken8.jpeg";
-import overwatchImg from "../assets/images/overwatch.jpeg";
-import codb06Img from "../assets/images/codb06.jpeg";
-import minecraftImg from "../assets/images/minecraft.png";
-import lou1Img from "../assets/images/lou1.jpeg";
-import lou2Img from "../assets/images/lou2.jpg";
-import legoRobloxImg from "../assets/images/lego-roblox-video-game-3840x2160-14270.jpg";
-import venomImg from "../assets/images/venom-spider-man-5120x2880-13179.jpg";
-import fortniteImg from "../assets/images/fortnite-street-striker-outfit-skin-3840x2160-488.jpg";
-import yasukeImg from "../assets/images/yasuke-naoe-3840x2160-21870.jpg";
-import racingImg from "../assets/images/racing.jpg";
-import racing2Img from "../assets/images/racing2.jpg";
-import racing5Img from "../assets/images/racing5.jpg";
-import racing6Img from "../assets/images/racing6.jpg";
-import racingBlurImg from "../assets/images/racing-blur.jpg";
-import defaultImg from "../assets/images/images.jpeg";
+import { useAuth } from "../context/AuthContext";
+import { getImage } from "../utils/imageMapping";
 
 // Import CSS to register the font
 import "../assets/fonts/fontStyles.css";
-
-// Create an image mapping object
-const imageMap = {
-  "eldenring.jpeg": eldenringImg,
-  "godofwar.jpg": godofwarImg,
-  "gta5.jpeg": gta5Img,
-  "rdr2.jpeg": rdr2Img,
-  "lol.jpeg": lolImg,
-  "tekken8.jpeg": tekken8Img,
-  "overwatch.jpeg": overwatchImg,
-  "codb06.jpeg": codb06Img,
-  "minecraft.png": minecraftImg,
-  "lou1.jpeg": lou1Img,
-  "lou2.jpg": lou2Img,
-  "lego-roblox-video-game-3840x2160-14270.jpg": legoRobloxImg,
-  "venom-spider-man-5120x2880-13179.jpg": venomImg,
-  "fortnite-street-striker-outfit-skin-3840x2160-488.jpg": fortniteImg,
-  "yasuke-naoe-3840x2160-21870.jpg": yasukeImg,
-  "racing.jpg": racingImg,
-  "racing2.jpg": racing2Img,
-  "racing5.jpg": racing5Img,
-  "racing6.jpg": racing6Img,
-  "racing-blur.jpg": racingBlurImg,
-  "default": defaultImg,
-};
 
 const Explore = () => {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { cart, addToCart } = useCart();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -85,6 +40,24 @@ const Explore = () => {
 
   const goToCart = () => {
     navigate('/cart');
+  };
+
+  const handleAddToCart = (e, game) => {
+    e.stopPropagation();
+    if (!currentUser) {
+      navigate('/login', { state: { from: '/explore' } });
+      return;
+    }
+    console.log('Adding game to cart:', game);
+    const gameData = {
+      id: game.id,
+      title: game.title,
+      price: game.price,
+      image: game.image,
+      platform: game.platform,
+      quantity: 1
+    };
+    addToCart(gameData);
   };
 
   if (loading) {
@@ -130,11 +103,11 @@ const Explore = () => {
             onClick={() => navigate(`/product/${game.id}`)}
           >
             <img
-              src={imageMap[game.image] || imageMap.default}
+              src={getImage(game.image)}
               alt={game.title}
               style={styles.cardImage}
               onError={(e) => {
-                e.target.src = imageMap.default;
+                e.target.src = getImage('default');
               }}
             />
             <div style={styles.cardContent}>
@@ -143,11 +116,7 @@ const Explore = () => {
               <p style={styles.cardGenre}>{game.genre}</p>
               <p style={styles.cardPrice}>${game.price}</p>
               <button
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent card click when clicking the button
-                  console.log('Adding to cart:', game); // Debug log
-                  addToCart(game);
-                }}
+                onClick={(e) => handleAddToCart(e, game)}
                 style={styles.addToCartButton}
               >
                 Add to Cart
