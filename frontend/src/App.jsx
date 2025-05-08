@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Home from "./pages/Home";
 import Explore from "./pages/Explore"; // Import Explore page
@@ -54,6 +54,10 @@ const Navbar = () => {
   const { currentUser } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
 
+  const handlePlaceholderClick = (page) => {
+    toast.info(`didn't write code for ${page} page lol`);
+  };
+
   return (
     <nav style={styles.navbar}>
       <div style={styles.navbarLeft}>
@@ -61,8 +65,18 @@ const Navbar = () => {
         <div style={styles.navLinks}>
           <Link to="/" style={styles.navLink}>Home</Link>
           <Link to="/explore" style={styles.navLink}>Explore</Link>
-          <Link to="/about" style={styles.navLink}>About</Link>
-          <Link to="/contact" style={styles.navLink}>Contact</Link>
+          <button 
+            onClick={() => handlePlaceholderClick('About')} 
+            style={styles.navButton}
+          >
+            About
+          </button>
+          <button 
+            onClick={() => handlePlaceholderClick('Contact')} 
+            style={styles.navButton}
+          >
+            Contact
+          </button>
         </div>
       </div>
       <div style={styles.navbarRight}>
@@ -252,6 +266,21 @@ const styles = {
   dropdownIcon: {
     marginRight: "10px",
     width: "16px",
+  },
+  navButton: {
+    color: "white",
+    textDecoration: "none",
+    margin: "0 15px",
+    fontSize: "16px",
+    fontWeight: "bold",
+    fontFamily: "'Google Sans', sans-serif",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: "0",
+    "&:hover": {
+      color: "#ff6b81",
+    },
   },
 };
 

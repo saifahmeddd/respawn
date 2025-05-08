@@ -10,6 +10,7 @@ import {
 import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase/config';
 import { toast } from 'react-toastify';
+import { motion } from 'framer-motion';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const Register = () => {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [focusedField, setFocusedField] = useState(null);
 
   useEffect(() => {
     // Check if Firebase auth is properly initialized
@@ -72,6 +74,14 @@ const Register = () => {
         [e.target.name]: '',
       });
     }
+  };
+
+  const handleFocus = (fieldName) => {
+    setFocusedField(fieldName);
+  };
+
+  const handleBlur = () => {
+    setFocusedField(null);
   };
 
   const handleGoogleSignIn = async () => {
@@ -184,12 +194,41 @@ const Register = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.formContainer}>
-        <h1 style={styles.title}>Create Account</h1>
-        <p style={styles.subtitle}>Join our gaming community today</p>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={styles.container}
+    >
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        style={styles.formContainer}
+      >
+        <motion.h1 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          style={styles.title}
+        >
+          Create Account
+        </motion.h1>
+        <motion.p 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          style={styles.subtitle}
+        >
+          Join our gaming community today
+        </motion.p>
 
-        <button
+        <motion.button
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleGoogleSignIn}
           disabled={loading}
           style={styles.googleButton}
@@ -200,14 +239,19 @@ const Register = () => {
             style={styles.googleIcon} 
           />
           Continue with Google
-        </button>
+        </motion.button>
 
         <div style={styles.divider}>
           <span style={styles.dividerText}>or</span>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            style={styles.inputGroup}
+          >
             <label htmlFor="username" style={styles.label}>Username</label>
             <input
               type="text"
@@ -215,14 +259,33 @@ const Register = () => {
               name="username"
               value={formData.username}
               onChange={handleChange}
+              onFocus={() => handleFocus('username')}
+              onBlur={handleBlur}
               required
-              style={styles.input}
+              style={{
+                ...styles.input,
+                borderColor: focusedField === 'username' ? '#ff6b81' : 'rgba(255, 255, 255, 0.05)',
+                boxShadow: focusedField === 'username' ? '0 0 0 2px rgba(255, 107, 129, 0.2)' : 'none'
+              }}
               placeholder="Choose a username"
             />
-            {errors.username && <span style={styles.error}>{errors.username}</span>}
-          </div>
+            {errors.username && (
+              <motion.span 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={styles.errorMessage}
+              >
+                {errors.username}
+              </motion.span>
+            )}
+          </motion.div>
 
-          <div style={styles.inputGroup}>
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            style={styles.inputGroup}
+          >
             <label htmlFor="email" style={styles.label}>Email</label>
             <input
               type="email"
@@ -230,14 +293,33 @@ const Register = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              onFocus={() => handleFocus('email')}
+              onBlur={handleBlur}
               required
-              style={styles.input}
+              style={{
+                ...styles.input,
+                borderColor: focusedField === 'email' ? '#ff6b81' : 'rgba(255, 255, 255, 0.05)',
+                boxShadow: focusedField === 'email' ? '0 0 0 2px rgba(255, 107, 129, 0.2)' : 'none'
+              }}
               placeholder="Enter your email"
             />
-            {errors.email && <span style={styles.error}>{errors.email}</span>}
-          </div>
+            {errors.email && (
+              <motion.span 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={styles.errorMessage}
+              >
+                {errors.email}
+              </motion.span>
+            )}
+          </motion.div>
 
-          <div style={styles.inputGroup}>
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            style={styles.inputGroup}
+          >
             <label htmlFor="password" style={styles.label}>Password</label>
             <input
               type="password"
@@ -245,14 +327,33 @@ const Register = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
+              onFocus={() => handleFocus('password')}
+              onBlur={handleBlur}
               required
-              style={styles.input}
+              style={{
+                ...styles.input,
+                borderColor: focusedField === 'password' ? '#ff6b81' : 'rgba(255, 255, 255, 0.05)',
+                boxShadow: focusedField === 'password' ? '0 0 0 2px rgba(255, 107, 129, 0.2)' : 'none'
+              }}
               placeholder="Create a password"
             />
-            {errors.password && <span style={styles.error}>{errors.password}</span>}
-          </div>
+            {errors.password && (
+              <motion.span 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={styles.errorMessage}
+              >
+                {errors.password}
+              </motion.span>
+            )}
+          </motion.div>
 
-          <div style={styles.inputGroup}>
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.9 }}
+            style={styles.inputGroup}
+          >
             <label htmlFor="confirmPassword" style={styles.label}>Confirm Password</label>
             <input
               type="password"
@@ -260,14 +361,33 @@ const Register = () => {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
+              onFocus={() => handleFocus('confirmPassword')}
+              onBlur={handleBlur}
               required
-              style={styles.input}
+              style={{
+                ...styles.input,
+                borderColor: focusedField === 'confirmPassword' ? '#ff6b81' : 'rgba(255, 255, 255, 0.05)',
+                boxShadow: focusedField === 'confirmPassword' ? '0 0 0 2px rgba(255, 107, 129, 0.2)' : 'none'
+              }}
               placeholder="Confirm your password"
             />
-            {errors.confirmPassword && <span style={styles.error}>{errors.confirmPassword}</span>}
-          </div>
+            {errors.confirmPassword && (
+              <motion.span 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={styles.errorMessage}
+              >
+                {errors.confirmPassword}
+              </motion.span>
+            )}
+          </motion.div>
 
-          <button
+          <motion.button
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 1 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={loading}
             style={{
@@ -276,18 +396,31 @@ const Register = () => {
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading ? 'Creating Account...' : 'Create Account'}
-          </button>
+            {loading ? (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                style={styles.loadingSpinner}
+              />
+            ) : (
+              'Create Account'
+            )}
+          </motion.button>
         </form>
 
-        <p style={styles.loginText}>
+        <motion.p 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 1.1 }}
+          style={styles.loginText}
+        >
           Already have an account?{' '}
           <Link to="/login" style={styles.link}>
             Sign in
           </Link>
-        </p>
-      </div>
-    </div>
+        </motion.p>
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -297,28 +430,35 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0f0f28',
+    backgroundColor: '#121212',
     padding: '20px',
+    backgroundImage: 'linear-gradient(135deg, #121212 0%, #1a1a1a 100%)',
   },
   formContainer: {
     width: '100%',
     maxWidth: '400px',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(18, 18, 18, 0.95)',
     padding: '40px',
     borderRadius: '15px',
     backdropFilter: 'blur(10px)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
   },
   title: {
     color: '#fff',
-    fontSize: '2rem',
+    fontSize: '2.5rem',
     fontWeight: 'bold',
     marginBottom: '10px',
     textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: '2px',
+    background: 'linear-gradient(45deg, #ff6b81, #ff4757)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
   },
   subtitle: {
-    color: '#a0a0a0',
-    fontSize: '1rem',
+    color: '#888',
+    fontSize: '1.1rem',
     marginBottom: '30px',
     textAlign: 'center',
   },
@@ -336,12 +476,13 @@ const styles = {
     color: '#fff',
     fontSize: '0.9rem',
     fontWeight: '500',
+    marginLeft: '4px',
   },
   input: {
-    padding: '12px 16px',
+    padding: '14px 16px',
     borderRadius: '8px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     color: '#fff',
     fontSize: '1rem',
     transition: 'all 0.3s ease',
@@ -351,33 +492,39 @@ const styles = {
       boxShadow: '0 0 0 2px rgba(255, 107, 129, 0.2)',
     },
   },
-  error: {
-    color: '#ff4757',
-    fontSize: '0.8rem',
-    marginTop: '4px',
-  },
   button: {
     padding: '14px',
     borderRadius: '8px',
     border: 'none',
-    backgroundColor: '#ff6b81',
+    background: 'linear-gradient(45deg, #ff6b81, #ff4757)',
     color: '#fff',
     fontSize: '1rem',
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     marginTop: '10px',
+    position: 'relative',
+    overflow: 'hidden',
     '&:hover': {
-      backgroundColor: '#ff4757',
       transform: 'translateY(-2px)',
+      boxShadow: '0 4px 15px rgba(255, 107, 129, 0.3)',
     },
     '&:disabled': {
       opacity: 0.7,
       cursor: 'not-allowed',
+      transform: 'none',
     },
   },
+  loadingSpinner: {
+    width: '20px',
+    height: '20px',
+    border: '2px solid #ffffff',
+    borderTop: '2px solid transparent',
+    borderRadius: '50%',
+    margin: '0 auto',
+  },
   loginText: {
-    color: '#a0a0a0',
+    color: '#888',
     textAlign: 'center',
     marginTop: '20px',
     fontSize: '0.9rem',
@@ -386,16 +533,18 @@ const styles = {
     color: '#ff6b81',
     textDecoration: 'none',
     fontWeight: '600',
+    transition: 'all 0.3s ease',
     '&:hover': {
+      color: '#ff4757',
       textDecoration: 'underline',
     },
   },
   googleButton: {
     width: '100%',
-    padding: '12px',
-    backgroundColor: '#fff',
-    color: '#333',
-    border: '1px solid #ddd',
+    padding: '14px',
+    backgroundColor: '#1a1a1a',
+    color: '#fff',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
     borderRadius: '8px',
     fontSize: '1rem',
     fontWeight: '600',
@@ -407,7 +556,9 @@ const styles = {
     marginBottom: '20px',
     transition: 'all 0.3s ease',
     '&:hover': {
-      backgroundColor: '#f5f5f5',
+      backgroundColor: '#242424',
+      transform: 'translateY(-2px)',
+      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
     },
   },
   googleIcon: {
@@ -421,13 +572,19 @@ const styles = {
     '&::before, &::after': {
       content: '""',
       flex: 1,
-      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
     },
   },
   dividerText: {
-    color: '#a0a0a0',
+    color: '#888',
     padding: '0 10px',
     fontSize: '0.9rem',
+  },
+  errorMessage: {
+    color: '#ff4757',
+    fontSize: '0.9rem',
+    marginTop: '5px',
+    marginLeft: '4px',
   },
 };
 
